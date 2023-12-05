@@ -7,10 +7,10 @@ import (
 	"io"
 	"log"
 	"os"
-	"path/filepath"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 func main() {
@@ -29,7 +29,9 @@ func main() {
 }
 
 func callListFiles(client pb.FileServiceClient) {
-	res, err := client.ListFiles(context.Background(), &pb.ListFileRequest{})
+	md := metadata.New(map[string]string{"authorization": "Bearer bad-token"})
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+	res, err := client.ListFiles(ctx, &pb.ListFileRequest{})
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
@@ -101,61 +103,61 @@ func CallUpload(client pb.FileServiceClient) {
 	log.Printf("received data size: %v", res.GetSize())
 }
 
-func CallUploadAndNotifyProgress(client pb.FileServiceClient) {
-	filename := "sports.txt"
-	path := filepath.Join("/Users/isawashun/Desktop/gRPC-tutorial/storage", filename)
+// func CallUploadAndNotifyProgress(client pb.FileServiceClient) {
+// 	filename := "sports.txt"
+// 	path := filepath.Join("/Users/isawashun/Desktop/gRPC-tutorial/storage", filename)
 
-	file, err := os.Open(path)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer file.Close()
+// 	file, err := os.Open(path)
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 	}
+// 	defer file.Close()
 
-	stream, err := client.UploadAndNotifyProgress(context.Background())
-	if err != nil {
-		log.Fatalln(err)
-	}
+// 	stream, err := client.UploadAndNotifyProgress(context.Background())
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 	}
 
-	buf := make([]byte, 5)
-	go func() {
-		for {
-			n, err := file.Read(buf)
-			if n == 0 || err == io.EOF {
-				break
-			}
-			if err != nil {
-				log.Fatalln(err)
-			}
+// 	buf := make([]byte, 5)
+// 	go func() {
+// 		for {
+// 			n, err := file.Read(buf)
+// 			if n == 0 || err == io.EOF {
+// 				break
+// 			}
+// 			if err != nil {
+// 				log.Fatalln(err)
+// 			}
 
-			req := &pb.UploadAndNotifyProgressRequest{Data: buf[:n]}
-			sendErr := stream.Send(req)
-			if sendErr != nil {
-				log.Fatalln(sendErr)
-			}
-			time.Sleep(1 * time.Second)
-		}
+// 			req := &pb.UploadAndNotifyProgressRequest{Data: buf[:n]}
+// 			sendErr := stream.Send(req)
+// 			if sendErr != nil {
+// 				log.Fatalln(sendErr)
+// 			}
+// 			time.Sleep(1 * time.Second)
+// 		}
 
-		err := stream.CloseSend()
-		if err != nil {
-			log.Fatalln(err)
-		}
-	}()
+// 		err := stream.CloseSend()
+// 		if err != nil {
+// 			log.Fatalln(err)
+// 		}
+// 	}()
 
-	// Response
-	ch := make(chan struct{})
-	go func() {
-		for {
-			res, err := stream.Recv()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				log.Fatalln(err)
-			}
+// 	// Response
+// 	ch := make(chan struct{})
+// 	go func() {
+// 		for {
+// 			res, err := stream.Recv()
+// 			if err == io.EOF {
+// 				break
+// 			}
+// 			if err != nil {
+// 				log.Fatalln(err)
+// 			}
 
-			log.Printf("received message: %v", res.GetMsg())
-		}
-		close(ch)
-	}()
-	<-ch
-}
+// 			log.Printf("received message: %v", res.GetMsg())
+// 		}
+// 		close(ch)
+// 	}()
+// 	<-ch
+// }
